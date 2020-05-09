@@ -5,8 +5,9 @@ from ..models import (
     NodeMulticlassTask,
     GraphRegressionTask,
     GraphBinaryClassificationTask,
+    NodeRegressionTask,
 )
-from ..data import GraphDataset, JsonLGraphPropertyDataset, QM9Dataset, PPIDataset
+from ..data import GraphDataset, JsonLGraphPropertyDataset, QM9Dataset, PPIDataset, TFAgentsDataset
 
 
 class TaskInfo(NamedTuple):
@@ -95,3 +96,12 @@ register_task(
     model_class=GraphBinaryClassificationTask,
     model_default_hypers={},
 )
+#------------------------------------------------------------------------------------
+register_task(
+    task_name="NodeLevelRegression",
+    dataset_class=TFAgentsDataset,
+    dataset_default_hypers={},
+    model_class=NodeRegressionTask,
+    model_default_hypers={},
+)
+
