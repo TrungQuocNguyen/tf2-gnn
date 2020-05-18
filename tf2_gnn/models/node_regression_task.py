@@ -37,8 +37,16 @@ class NodeRegressionTask(GraphTaskModel):
         self, batch_features, task_output, batch_labels
     ) -> Dict[str, tf.Tensor]:
         (per_node_logits,) = task_output
-        loss = self._fast_task_metrics(per_node_logits, batch_labels["node_targets"])
-
+        ego_id = tf.cumsum(tf.pad(tf.unique_with_counts(batch_features["node_to_graph_map"])[2],[[1,0]]))[:-1]
+        ego_logits = tf.gather(per_node_logits, ego_id)
+        ego_labels = tf.gather(batch_labels["node_targets"], ego_id)
+        #2 ways to compute the loss
+        #   1.compute loss with respect to all nodes
+        #loss = self._fast_task_metrics(per_node_logits, batch_labels["node_targets"])
+        #   2.compute loss with respect to only ego nodes
+        
+        loss = self._fast_task_metrics(ego_logits,ego_labels)
+        
         return {"loss": loss}
 
     @tf.function(input_signature=(tf.TensorSpec((None, None)), tf.TensorSpec((None, None))))

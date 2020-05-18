@@ -106,7 +106,7 @@ class GraphTaskModel(tf.keras.Model):
         )
         return gnn_output
 
-    def call(self, inputs, training: bool):
+    def call(self, inputs, training: bool): #
         final_node_representations = self.compute_final_node_representations(inputs, training)
         return self.compute_task_output(inputs, final_node_representations, training)
 
@@ -245,9 +245,11 @@ class GraphTaskModel(tf.keras.Model):
     # ----------------------------- Prediction Loop
     def predict(self, dataset: tf.data.Dataset):
         task_outputs = []
-        for batch_features, _ in dataset:
-            task_outputs.append(self(batch_features, training=False))
-
+        task_true_targets = []
+        for batch_features, batch_targets in dataset:
+            (output,) = self(batch_features, training=False)
+            task_outputs.append(output)
+            task_true_targets.append(batch_targets["node_targets"])
         # Note: This assumes that the task output is a tensor (true for classification, regression,
         #  etc.) but subclasses implementing more complicated outputs will need to override this.
-        return tf.concat(task_outputs, axis=0)
+        return tf.concat(task_outputs, axis=0), tf.concat(task_true_targets, axis = 0) #output is a tensor of size VxT, V is number of node, T is number of targets

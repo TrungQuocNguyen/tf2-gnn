@@ -96,7 +96,7 @@ class TFAgentsDataset(GraphDataset[TFAgentsGraphSample]):
             raise ValueError("Unknown data fold '%s'" % str(data_fold))
         print(" Loading observer %s data from %s." % (data_name, data_dir))
         
-        graph_pickle_data = data_dir.join("%s_data_collection_agents31.pickle" % data_name).read_by_file_suffix()
+        graph_pickle_data = data_dir.join("%s_data_collection.pickle" % data_name).read_by_file_suffix()
 
         graph_id_to_edges: Dict[int, List[Tuple[int, int]]] = {}
         graph_id_to_features: Dict[int, List[np.ndarray]] = {}
@@ -160,6 +160,7 @@ class TFAgentsDataset(GraphDataset[TFAgentsGraphSample]):
     def _new_batch(self) -> Dict[str, Any]:
         new_batch = super()._new_batch()
         new_batch["node_targets"] = []
+
         return new_batch
 
     def _add_graph_to_batch(self, raw_batch, graph_sample: TFAgentsGraphSample) -> None:

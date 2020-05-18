@@ -4,6 +4,7 @@ import random
 import sys
 import time
 from typing import Dict, Optional, Callable, Any
+import pickle
 
 import numpy as np
 import tensorflow as tf
@@ -92,6 +93,47 @@ def train(
             )
             log_fun(f"Training took {total_time}s. Best validation metric: {best_valid_metric}",)
             break
+    log_fun(f"Running prediction of steering and acceleration of ego vehicles on train data ")
+    train_predicted_targets, train_true_targets = model.predict(train_data)
+    
+    train_predicted_targets = train_predicted_targets.numpy()
+    train_true_targets = train_true_targets.numpy()
+    
+
+    train_predicted_file = os.path.join(save_dir, f"train_predicted_targets.pickle")
+    train_target_file = os.path.join(save_dir, f"train_true_targets.pickle")
+    
+    log_fun(f"Saving prediction to {train_predicted_file}")
+    with open(train_predicted_file, 'wb') as handle:
+        pickle.dump(train_predicted_targets, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    handle.close()
+
+    log_fun(f"Saving true target to {train_target_file}")
+    with open(train_target_file, 'wb') as handle:
+        pickle.dump(train_true_targets, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    handle.close()
+    #-----------------------------------------------------------------------------
+    
+
+    
+    log_fun(f"Running prediction of steering and acceleration of ego vehicles on validation data ")
+    valid_predicted_targets, valid_true_targets = model.predict(valid_data)
+    valid_predicted_targets = valid_predicted_targets.numpy()
+    valid_true_targets = valid_true_targets.numpy()
+
+    valid_predicted_file = os.path.join(save_dir, f"valid_predicted_targets.pickle")
+    valid_target_file = os.path.join(save_dir, f"valid_true_targets.pickle")
+    
+    log_fun(f"Saving prediction to {valid_predicted_file}")
+    with open(valid_predicted_file, 'wb') as handle:
+        pickle.dump(valid_predicted_targets, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    handle.close()
+
+    log_fun(f"Saving true target to {valid_target_file}")
+    with open(valid_target_file, 'wb') as handle:
+        pickle.dump(valid_true_targets, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    handle.close()
+
     return save_file
 
 
@@ -155,6 +197,7 @@ def run_train_from_args(args, hyperdrive_hyperparameter_overrides: Dict[str, str
         quiet=args.quiet,
         aml_run=aml_run,
     )
+
 
     if args.run_test:
         data_path = RichPath.create(args.data_path, args.azure_info)

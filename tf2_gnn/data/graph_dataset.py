@@ -229,7 +229,7 @@ class GraphDataset(Generic[GraphSampleType]):
         batch_features: Dict[str, Any] = {}
         batch_labels: Dict[str, Any] = {}
         batch_features["node_features"] = np.array(raw_batch["node_features"])
-        batch_features["node_to_graph_map"] = np.concatenate(raw_batch["node_to_graph_map"])
+        batch_features["node_to_graph_map"] = np.concatenate(raw_batch["node_to_graph_map"]) #batch_features is 1-D numpy array 
         batch_features["num_graphs_in_batch"] = raw_batch["num_graphs_in_batch"]
         for i, adjacency_list in enumerate(raw_batch["adjacency_lists"]):
             if len(adjacency_list) > 0:
