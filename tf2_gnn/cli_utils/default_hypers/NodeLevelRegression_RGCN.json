@@ -1,10 +1,10 @@
 {
     "task_params": {
-        "max_nodes_per_batch": 240
+        "max_nodes_per_batch": 700
     },
     "model_params": {
         "gnn_num_layers": 4,
-        "gnn_hidden_dim": 12,
+        "gnn_hidden_dim": 200,
         "gnn_use_target_state_as_input": false,
         "gnn_normalize_by_num_incoming": true,
         "gnn_num_edge_MLP_hidden_layers": 0,

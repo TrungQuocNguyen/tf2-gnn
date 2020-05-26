@@ -5,6 +5,7 @@ import sys
 import time
 from typing import Dict, Optional, Callable, Any
 import pickle
+import datetime
 
 import numpy as np
 import tensorflow as tf
@@ -48,12 +49,21 @@ def train(
 
     save_file = os.path.join(save_dir, f"{run_id}_best.pkl")
 
-    _, _, initial_valid_results = model.run_one_epoch(valid_data, training=False, quiet=quiet)
+    best_valid_avg_loss, _, initial_valid_results = model.run_one_epoch(valid_data, training=False, quiet=quiet)
     best_valid_metric, best_val_str = model.compute_epoch_metrics(initial_valid_results)
     log_fun(f"Initial valid metric: {best_val_str}.")
     save_model(save_file, model, dataset)
     best_valid_epoch = 0
+
+    #Set up summary writers to write the summaries to disk in a different logs directory (TensorBoard)
+    current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    train_log_dir = '/home/trung/tf2_gnn_folder/tf2-gnn/logs/gradient_tape/' + current_time + '/train'
+    valid_log_dir = '/home/trung/tf2_gnn_folder/tf2-gnn/logs/gradient_tape/' + current_time + '/valid'
+    train_summary_writer = tf.summary.create_file_writer(train_log_dir)
+    valid_summary_writer = tf.summary.create_file_writer(valid_log_dir)
+    #Set up timer
     train_time_start = time.time()
+
     for epoch in range(1, max_epochs + 1):
         log_fun(f"== Epoch {epoch}")
         train_loss, train_speed, train_results = model.run_one_epoch(
@@ -71,19 +81,28 @@ def train(
             f" Valid:  {valid_loss:.4f} loss | {valid_metric_string} | {valid_speed:.2f} graphs/s",
         )
 
+
         if aml_run is not None:
             aml_run.log("task_train_metric", float(train_metric))
             aml_run.log("train_speed", float(train_speed))
             aml_run.log("task_valid_metric", float(valid_metric))
             aml_run.log("valid_speed", float(valid_speed))
 
+
+        # log metrics for using later with TensorBoard 
+
+        with train_summary_writer.as_default():
+            tf.summary.scalar('loss', train_loss, step=epoch)
+        with valid_summary_writer.as_default():
+            tf.summary.scalar('loss', valid_loss, step=epoch)
+
         # Save if good enough.
-        if valid_metric < best_valid_metric:
+        if valid_loss < best_valid_avg_loss:
             log_fun(
-                f"  (Best epoch so far, target metric decreased to {valid_metric:.5f} from {best_valid_metric:.5f}.)",
+                f"  (Best epoch so far, target metric decreased to {valid_loss:.5f} from {best_valid_avg_loss:.5f}.)",
             )
             save_model(save_file, model, dataset)
-            best_valid_metric = valid_metric
+            best_valid_avg_loss = valid_loss
             best_valid_epoch = epoch
         elif epoch - best_valid_epoch >= patience:
             total_time = time.time() - train_time_start
@@ -91,7 +110,7 @@ def train(
                 f"Stopping training after {patience} epochs without "
                 f"improvement on validation metric.",
             )
-            log_fun(f"Training took {total_time}s. Best validation metric: {best_valid_metric}",)
+            log_fun(f"Training took {total_time}s. Best validation metric: {best_valid_avg_loss}",)
             break
     log_fun(f"Running prediction of steering and acceleration of ego vehicles on train data ")
     train_predicted_targets, train_true_targets = model.predict(train_data)
@@ -207,9 +226,9 @@ def run_train_from_args(args, hyperdrive_hyperparameter_overrides: Dict[str, str
         log(f"Restoring best model state from {trained_model_path}.")
         load_weights_verbosely(trained_model_path, model)
         test_data = dataset.get_tensorflow_dataset(DataFold.TEST)
-        _, _, test_results = model.run_one_epoch(test_data, training=False, quiet=args.quiet)
+        test_avg_loss, _, test_results = model.run_one_epoch(test_data, training=False, quiet=args.quiet)
         test_metric, test_metric_string = model.compute_epoch_metrics(test_results)
-        log(test_metric_string)
+        log(f"Average epoch loss for test data is {test_avg_loss}")
         if aml_run is not None:
             aml_run.log("task_test_metric", float(test_metric))
 
