@@ -57,8 +57,8 @@ def train(
 
     #Set up summary writers to write the summaries to disk in a different logs directory (TensorBoard)
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    train_log_dir = '/home/trung/tf2_gnn_folder/tf2-gnn/logs/gradient_tape/' + current_time + '/train'
-    valid_log_dir = '/home/trung/tf2_gnn_folder/tf2-gnn/logs/gradient_tape/' + current_time + '/valid'
+    train_log_dir = os.getcwd() + '/logs/gradient_tape/' + current_time + '/train'
+    valid_log_dir = os.getcwd() + '/logs/gradient_tape/' + current_time + '/valid'
     train_summary_writer = tf.summary.create_file_writer(train_log_dir)
     valid_summary_writer = tf.summary.create_file_writer(valid_log_dir)
     #Set up timer
