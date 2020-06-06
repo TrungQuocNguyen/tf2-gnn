@@ -32,6 +32,20 @@ class GraphObserverModel():
     data_params_override: Optional[str] = None, 
     model_params_override: Optional[str] = None, 
     hyperdrive_arg_parse:bool = False):
+        """ Specify the hyperparameter for the model
+        model: The main architecture to train. E.g: RGCN, RGAT
+        task: Name of the task. See task_utils.py for other types of task
+        random_seed: seed for random initialize with numpy and Tensorflow
+        save_dir: directory to save trained model
+        max_epochs: number of epochs to run
+        patience: Stop the training process if result does not improve after patience epochs
+        quiet: if True, generate less intermediate values
+        debug: if True, use debug of dpu.utils
+        load_saved_model: Optional location to load model
+        load_weights_only: Only load weights and not the entire model
+        run_test: Whether to run on test data after training
+        
+        """
         self.model_str = model
         self.task_str = task
         self.max_epochs = max_epochs
@@ -50,13 +64,15 @@ class GraphObserverModel():
         self.hyperdrive_arg_parse = hyperdrive_arg_parse
         
     def __call__(self, raw_data: List[Dict[str, Any]]):
+        """ Predict the new data with trained model"""
         self.dataset.load_data_from_list(raw_data, DataFold.TEST)
         load_weights_verbosely(self.trained_model_path, self.model)
         test_data = self.dataset.get_tensorflow_dataset(DataFold.TEST)
         predicted_targets, true_targets = self.model.predict(test_data)
         
         
-    def fit(self, train_data: List[Dict[str, Any]], validation_data: List[Dict[str, Any]]): 
+    def fit(self, train_data: List[Dict[str, Any]], validation_data: List[Dict[str, Any]]):
+        """ Fit the model to the train and validation data""" 
         os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
         tf.get_logger().setLevel("ERROR")
 
