@@ -6,6 +6,7 @@ import time
 from typing import Dict, Optional, Callable, Any
 import pickle
 import datetime
+import copy
 
 import numpy as np
 import tensorflow as tf
@@ -49,6 +50,7 @@ def train(
 
     save_file = os.path.join(save_dir, f"{run_id}_best.pkl")
 
+    best_model = None
     best_valid_avg_loss, _, initial_valid_results = model.run_one_epoch(valid_data, training=False, quiet=quiet)
     best_valid_metric, best_val_str = model.compute_epoch_metrics(initial_valid_results)
     log_fun(f"Initial valid metric: {best_val_str}.")
@@ -104,6 +106,7 @@ def train(
             save_model(save_file, model, dataset)
             best_valid_avg_loss = valid_loss
             best_valid_epoch = epoch
+            best_model = copy.copy(model)
         elif epoch - best_valid_epoch >= patience:
             total_time = time.time() - train_time_start
             log_fun(
@@ -113,7 +116,7 @@ def train(
             log_fun(f"Training took {total_time}s. Best validation metric: {best_valid_avg_loss}",)
             break
     log_fun(f"Running prediction of steering and acceleration of ego vehicles on train data ")
-    train_predicted_targets, train_true_targets = model.predict(train_data)
+    train_predicted_targets, train_true_targets = best_model.predict(train_data)
     
     train_predicted_targets = train_predicted_targets.numpy()
     train_true_targets = train_true_targets.numpy()
@@ -136,7 +139,7 @@ def train(
 
     
     log_fun(f"Running prediction of steering and acceleration of ego vehicles on validation data ")
-    valid_predicted_targets, valid_true_targets = model.predict(valid_data)
+    valid_predicted_targets, valid_true_targets = best_model.predict(valid_data)
     valid_predicted_targets = valid_predicted_targets.numpy()
     valid_true_targets = valid_true_targets.numpy()
 

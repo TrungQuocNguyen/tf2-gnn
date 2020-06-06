@@ -148,7 +148,7 @@ class GraphDataset(Generic[GraphSampleType]):
                     Concretely, adjacency_lists[l][k,:] == [v, u]
                     means that the k-th edge of type l connects node v to node u.
         """
-        graph_sample_iterator = self._graph_iterator(data_fold)
+        graph_sample_iterator = self._graph_iterator(data_fold) #only shuffle train_data(not with test data)
         for graph_batch in self.graph_batch_iterator_from_graph_iterator(graph_sample_iterator):
             yield graph_batch
 
@@ -284,7 +284,7 @@ class GraphDataset(Generic[GraphSampleType]):
                 self.graph_batch_iterator(data_fold)
             )
         else:
-            graph_batch_iterator = lambda: self.graph_batch_iterator(data_fold)
+            graph_batch_iterator = lambda: self.graph_batch_iterator(data_fold) #the order of nodes in one graph sample stays. The order of graph in list of graph stays with the test data, shuffle with train data.  
 
         dataset = tf.data.Dataset.from_generator(
             generator=graph_batch_iterator,
