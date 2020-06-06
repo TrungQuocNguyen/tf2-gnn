@@ -106,7 +106,7 @@ def train(
             save_model(save_file, model, dataset)
             best_valid_avg_loss = valid_loss
             best_valid_epoch = epoch
-            best_model = copy.copy(model)
+            best_model = model
         elif epoch - best_valid_epoch >= patience:
             total_time = time.time() - train_time_start
             log_fun(

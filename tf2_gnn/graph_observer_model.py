@@ -16,10 +16,10 @@ from .data import DataFold, GraphDataset
 
 class GraphObserverModel(): 
     def __init__(self, 
-    model: str = 'RGCN', 
-    task: str = 'NodeLevelRegression',
+    model: Optional[str] = None, 
+    task: Optional[str] = None,
     random_seed:int = 0,  
-    save_dir:str = os.path.dirname(os.getcwd())+'/trained-model', 
+    save_dir:str = os.getcwd()+'/trained-model', 
     max_epochs: int = 15, 
     patience: int = 5, 
     quiet: bool = False, 
@@ -32,7 +32,8 @@ class GraphObserverModel():
     data_params_override: Optional[str] = None, 
     model_params_override: Optional[str] = None, 
     hyperdrive_arg_parse:bool = False):
-        """ Specify the hyperparameter for the model
+        """ Model for training Graph Neural Network.
+        Specify the hyperparameter for the model
         model: The main architecture to train. E.g: RGCN, RGAT
         task: Name of the task. See task_utils.py for other types of task
         random_seed: seed for random initialize with numpy and Tensorflow
@@ -46,8 +47,12 @@ class GraphObserverModel():
         run_test: Whether to run on test data after training
         
         """
+        if model is None and task is None and load_saved_model is None: 
+            raise Exception("Specify either task and model name or location of saved model")
+
         self.model_str = model
         self.task_str = task
+        self.model = None
         self.max_epochs = max_epochs
         self.patience = patience
         self.quiet = quiet
@@ -65,23 +70,45 @@ class GraphObserverModel():
         
     def __call__(self, raw_data: List[Dict[str, Any]]):
         """ Predict the new data with trained model"""
-        self.dataset.load_data_from_list(raw_data, DataFold.TEST)
-        load_weights_verbosely(self.trained_model_path, self.model)
-        test_data = self.dataset.get_tensorflow_dataset(DataFold.TEST)
-        predicted_targets, true_targets = self.model.predict(test_data)
-        
+        if self.model is None and self.load_saved_model is None: 
+            raise Exception("Model is not loaded, please either train new model or load model before calling prediction")
+        elif self.model is None and self.load_saved_model is not None: 
+            try:
+                self.dataset, self.model = self.get_model_and_dataset(
+                    msg_passing_implementation=self.model_str,
+                    task_name=self.task_str,
+                    raw_graph_data = {"test": raw_data},  
+                    trained_model_file=self.load_saved_model,
+                    cli_data_hyperparameter_overrides=self.data_params_override,
+                    cli_model_hyperparameter_overrides=self.model_params_override,
+                    hyperdrive_hyperparameter_overrides=None,
+                    folds_to_load={DataFold.TEST},
+                    load_weights_only=self.load_weights_only,
+                    )
+            except ValueError as err:
+                print(err.args)
+
+            test_data = self.dataset.get_tensorflow_dataset(DataFold.TEST)
+            predicted_targets, true_targets = self.model.predict(test_data)
+            return (predicted_targets, true_targets)
+            
+        else: 
+            self.dataset.load_data_from_list(raw_data, DataFold.TEST)
+            load_weights_verbosely(self.load_saved_model, self.model)
+            test_data = self.dataset.get_tensorflow_dataset(DataFold.TEST)
+            predicted_targets, true_targets = self.model.predict(test_data)
+            return (predicted_targets, true_targets)
         
     def fit(self, train_data: List[Dict[str, Any]], validation_data: List[Dict[str, Any]]):
         """ Fit the model to the train and validation data""" 
         os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
         tf.get_logger().setLevel("ERROR")
 
-        run_and_debug(lambda: self._run_train(train_data, validation_data), debug)
-
+        run_and_debug(lambda: self._run_train(train_data, validation_data), self.debug)
 
     def _run_train(self, train_data:List[Dict[str, Any]], validation_data: List[Dict[str, Any]]): 
         os.makedirs(self.save_dir, exist_ok=True)
-        run_id = make_run_id(self.model, self.task)
+        run_id = make_run_id(self.model_str, self.task_str)
         log_file = os.path.join(self.save_dir, f"{run_id}.log")
         def log(msg):
             log_line(log_file, msg)
@@ -92,12 +119,12 @@ class GraphObserverModel():
         tf.random.set_seed(self.random_seed)
         try:
             self.dataset, self.model = self.get_model_and_dataset(
-                msg_passing_implementation=self.model,
-                task_name=self.task,
+                msg_passing_implementation=self.model_str,
+                task_name=self.task_str,
                 raw_graph_data = {"train": train_data, "validation": validation_data},  
                 trained_model_file=self.load_saved_model,
-                cli_data_hyperparameter_overrides=self.data_param_override,
-                cli_model_hyperparameter_overrides=self.model_param_override,
+                cli_data_hyperparameter_overrides=self.data_params_override,
+                cli_model_hyperparameter_overrides=self.model_params_override,
                 hyperdrive_hyperparameter_overrides=None,
                 folds_to_load={DataFold.TRAIN, DataFold.VALIDATION},
                 load_weights_only=self.load_weights_only,
@@ -114,7 +141,7 @@ class GraphObserverModel():
         else:
             aml_run = None
         
-        self.trained_model_path = train(
+        self.load_saved_model = train(
         self.model,
         self.dataset,
         log_fun=log,
@@ -152,7 +179,7 @@ class GraphObserverModel():
             default_task_model_hypers = {}
             task_model_default_hypers_file = os.path.join(
                 os.path.dirname(__file__),
-                "default_hypers",
+                "cli_utils/default_hypers",
                 "%s_%s.json" % (task_name, msg_passing_implementation),
             )
             print(

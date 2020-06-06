@@ -98,16 +98,16 @@ class TFAgentsDataset(GraphDataset[TFAgentsGraphSample]):
         graph_id_to_targets: Dict[int, List[np.ndarray]] = {}
         #graph_id_to_node_offset: Dict[int, int] = {}
 
-        for graph_id, graph in enumerate(datapoints, 1):    #graph_pickle_data is a list of dictionary. graph_id start at 1
+        for graph_id, graph in enumerate(datapoints, 1):    #datapoints is a list of dictionary. graph_id start at 1
             graph_id_to_features[graph_id] = []
             graph_id_to_targets[graph_id] = []
             graph_id_to_edges[graph_id] = []
-            for node_dict in graph['graph_data']['nodes']: 
+            for node_dict in graph['graph']['nodes']: 
                 graph_id_to_features[graph_id].append(np.array(list(node_dict.values())))
-            for target_dict in graph['graph_labels']: 
+            for target_dict in list(graph['actions'].values()): 
                 graph_id_to_targets[graph_id].append(np.array(list(target_dict.values())))
             #convert source, target node from id to position of nodes in the list 
-            for edge_dict in graph['graph_data']['links']: 
+            for edge_dict in graph['graph']['links']: 
                 src_node, tgt_node  = edge_dict['source'], edge_dict['target']
                 graph_id_to_edges[graph_id].append((src_node, tgt_node))
 
