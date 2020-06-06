@@ -83,7 +83,58 @@ class TFAgentsDataset(GraphDataset[TFAgentsGraphSample]):
     def load_data_from_list(
         self, datapoints: List[Dict[str, Any]], target_fold: DataFold = DataFold.TEST
     ):
-        raise NotImplementedError()
+        if target_fold == DataFold.TRAIN: 
+             self._loaded_data[DataFold.TRAIN] = self.__load_data_from_list(datapoints, DataFold.TRAIN)
+        if target_fold == DataFold.VALIDATION: 
+             self._loaded_data[DataFold.VALIDATION] = self.__load_data_from_list(datapoints, DataFold.VALIDATION)
+        if target_fold == DataFold.TEST: 
+             self._loaded_data[DataFold.TEST] = self.__load_data_from_list(datapoints, DataFold.TEST)
+
+    def __load_data_from_list(
+        self,  datapoints: List[Dict[str, Any]], target_fold: DataFold = DataFold.TEST): 
+
+        graph_id_to_edges: Dict[int, List[Tuple[int, int]]] = {}
+        graph_id_to_features: Dict[int, List[np.ndarray]] = {}
+        graph_id_to_targets: Dict[int, List[np.ndarray]] = {}
+        #graph_id_to_node_offset: Dict[int, int] = {}
+
+        for graph_id, graph in enumerate(datapoints, 1):    #graph_pickle_data is a list of dictionary. graph_id start at 1
+            graph_id_to_features[graph_id] = []
+            graph_id_to_targets[graph_id] = []
+            graph_id_to_edges[graph_id] = []
+            for node_dict in graph['graph_data']['nodes']: 
+                graph_id_to_features[graph_id].append(np.array(list(node_dict.values())))
+            for target_dict in graph['graph_labels']: 
+                graph_id_to_targets[graph_id].append(np.array(list(target_dict.values())))
+            #convert source, target node from id to position of nodes in the list 
+            for edge_dict in graph['graph_data']['links']: 
+                src_node, tgt_node  = edge_dict['source'], edge_dict['target']
+                graph_id_to_edges[graph_id].append((src_node, tgt_node))
+
+        
+        
+        final_graphs = []
+        for graph_id in graph_id_to_edges.keys():
+            num_nodes = len(graph_id_to_features[graph_id])
+
+            adjacency_lists, type_to_node_to_num_inedges = process_adjacency_lists(
+                adjacency_lists=[graph_id_to_edges[graph_id]],
+                num_nodes=num_nodes,
+                add_self_loop_edges=self.params["add_self_loop_edges"],
+                tied_fwd_bkwd_edge_types=self._tied_fwd_bkwd_edge_types,
+            )
+
+            final_graphs.append(
+                TFAgentsGraphSample(
+                    adjacency_lists=adjacency_lists,
+                    type_to_node_to_num_inedges=type_to_node_to_num_inedges,
+                    node_features=np.array(graph_id_to_features[graph_id]),
+                    node_targets=np.array(graph_id_to_targets[graph_id]),
+                )
+            )
+
+        return final_graphs
+        
 
     def __load_data(self, data_dir: RichPath, data_fold: DataFold):
         if data_fold == DataFold.TRAIN:

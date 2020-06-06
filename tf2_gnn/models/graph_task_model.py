@@ -203,7 +203,7 @@ class GraphTaskModel(tf.keras.Model):
 
         self._optimizer.apply_gradients(gradient_variable_pairs)
 
-    # ----------------------------- Training Loop
+    # ----------------------------- Training Loop--------------------------------
     def run_one_epoch(
         self, dataset: tf.data.Dataset, quiet: bool = False, training: bool = True,
     ) -> Tuple[float, float, List[Any]]:
@@ -242,14 +242,19 @@ class GraphTaskModel(tf.keras.Model):
         total_time = time.time() - epoch_time_start
         return total_loss / float(total_num_graphs), float(total_num_graphs) / total_time, task_results
 
-    # ----------------------------- Prediction Loop
+    # ----------------------------- Prediction Loop--------------------------------------
     def predict(self, dataset: tf.data.Dataset):
         task_outputs = []
         task_true_targets = []
         for batch_features, batch_targets in dataset:
             (output,) = self(batch_features, training=False)
-            task_outputs.append(output)
-            task_true_targets.append(batch_targets["node_targets"])
+            ego_id = tf.cumsum(tf.pad(tf.unique_with_counts(batch_features["node_to_graph_map"])[2],[[1,0]]))[:-1]
+
+            ego_outputs = tf.gather(output, ego_id)
+            ego_labels = tf.gather(batch_targets["node_targets"], ego_id)
+
+            task_outputs.append(ego_outputs)
+            task_true_targets.append(ego_labels)
         # Note: This assumes that the task output is a tensor (true for classification, regression,
         #  etc.) but subclasses implementing more complicated outputs will need to override this.
         return tf.concat(task_outputs, axis=0), tf.concat(task_true_targets, axis = 0) #output is a tensor of size VxT, V is number of node, T is number of targets
