@@ -50,7 +50,7 @@ def train(
 
     save_file = os.path.join(save_dir, f"{run_id}_best.pkl")
 
-    best_model = None
+    best_model = model
     best_valid_avg_loss, _, initial_valid_results = model.run_one_epoch(valid_data, training=False, quiet=quiet)
     best_valid_metric, best_val_str = model.compute_epoch_metrics(initial_valid_results)
     log_fun(f"Initial valid metric: {best_val_str}.")
@@ -106,7 +106,6 @@ def train(
             save_model(save_file, model, dataset)
             best_valid_avg_loss = valid_loss
             best_valid_epoch = epoch
-            best_model = model
         elif epoch - best_valid_epoch >= patience:
             total_time = time.time() - train_time_start
             log_fun(
