@@ -70,9 +70,10 @@ class GraphObserverModel():
         
     def __call__(self, raw_data: List[Dict[str, Any]]):
         """ Predict the new data with trained model"""
-        if self.model is None and self.load_saved_model is None: 
-            raise Exception("Model is not loaded, please either train new model or load model before calling prediction")
-        elif self.model is None and self.load_saved_model is not None: 
+        #if self.model is None and self.load_saved_model is None: 
+        #    raise Exception("Model is not loaded, please either train new model or load model before calling prediction")
+        #if self.model is None and self.load_saved_model is not None
+        if self.model is None: 
             try:
                 self.dataset, self.model = self.get_model_and_dataset(
                     msg_passing_implementation=self.model_str,
